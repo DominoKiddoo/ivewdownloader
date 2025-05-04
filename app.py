@@ -1,11 +1,12 @@
 import os
-import re
-import sys
 from flask import Flask, render_template, request
-from yt_dlp import YoutubeDL, DownloadError
+import subprocess
+import sys
+import yt_dlp
 
-# Print Python version
+# Print Python and yt-dlp versions
 print(f"Python version: {sys.version}")
+print(f"yt-dlp version: {yt_dlp.version.__version__}")
 
 app = Flask(__name__)
 
@@ -13,31 +14,26 @@ app = Flask(__name__)
 def download():
     message = ""
     if request.method == "POST":
-        video_url = request.form.get("video_url", "").strip()
-        file_name = request.form.get("file_name", "").strip()
+        video_url = request.form["video_url"]
+        file_name = request.form["file_name"]
 
         if not video_url or not file_name:
-            message = "⚠️ Please fill in all fields."
+            message = "Please fill in all fields."
         else:
-            # Sanitize filename to remove illegal characters
-            safe_file_name = re.sub(r'[^a-zA-Z0-9_-]', '_', file_name)
-            output_filename = f"{safe_file_name}.%(ext)s"
-
-            ydl_opts = {
-                'format': 'bv+ba/b',
-                'outtmpl': output_filename,
-                'noplaylist': True,
-                'quiet': True,
-                'no_warnings': True,
-            }
-
+            output_filename = f"{file_name}.%(ext)s"
             try:
-                with YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([video_url])
-                message = f"✅ Download complete: {safe_file_name}.mp4"
-            except DownloadError as e:
-                message = f"❌ Error downloading video: {str(e)}"
+                result = subprocess.run([
+                    "yt-dlp",
+                    "--no-playlist",               # 👈 This tells yt-dlp not to treat it as a playlist
+                    "-o", output_filename,
+                    "-f", "best",
+                    video_url
+                ], check=True, capture_output=True, text=True)
 
+                message = f"✅ Download complete: {file_name}"
+            except subprocess.CalledProcessError as e:
+                print("Download error:", e.stderr)  # Print to logs for debugging
+                message = f"❌ Error downloading video:\n{e.stderr}"
     return render_template("index.html", message=message)
 
 if __name__ == "__main__":
