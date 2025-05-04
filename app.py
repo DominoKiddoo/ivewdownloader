@@ -1,6 +1,14 @@
 import os
 from flask import Flask, render_template, request
 import subprocess
+import sys
+import yt_dlp
+
+# Print Python version
+print(f"Python version: {sys.version}")
+
+# Print yt-dlp version
+print(f"yt-dlp version: {yt_dlp.__version__}")
 
 app = Flask(__name__)
 
